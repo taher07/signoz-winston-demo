@@ -1,6 +1,7 @@
 const winston = require('winston');
-const { trace, context } = require('@opentelemetry/api');
 const { logs, SeverityNumber } = require('@opentelemetry/api-logs');
+const { OpenTelemetryTransportV3 } = require('@opentelemetry/winston-transport');
+const { loggerProvider } = require('./tracing');
 
 // Map Winston levels to OpenTelemetry severity numbers
 const severityMapping = {
@@ -16,76 +17,11 @@ const severityMapping = {
 // Get OpenTelemetry logger
 const otelLogger = logs.getLogger('winston-logger', '1.0.0');
 
-// Custom transport that sends logs to OpenTelemetry with trace context
-class OpenTelemetryTransport extends winston.Transport {
-  constructor(opts) {
-    super(opts);
-  }
-
-  log(info, callback) {
-    setImmediate(() => {
-      this.emit('logged', info);
-    });
-
-    // Get current span context
-    const span = trace.getSpan(context.active());
-    let spanContext = {};
-    
-    if (span) {
-      const sc = span.spanContext();
-      spanContext = {
-        traceId: sc.traceId,
-        spanId: sc.spanId,
-        traceFlags: sc.traceFlags,
-      };
-    }
-
-    // Map Winston level to OpenTelemetry severity
-    const severityNumber = severityMapping[info.level] || SeverityNumber.INFO;
-
-    // Prepare attributes
-    const attributes = {};
-    
-    // Add all properties except internal ones
-    Object.keys(info).forEach(key => {
-      if (!['level', 'message', 'timestamp', 'Symbol(level)', 'Symbol(message)'].includes(key) && 
-          !key.startsWith('Symbol(')) {
-        attributes[key] = info[key];
-      }
-    });
-
-    // Emit log record with trace context
-    otelLogger.emit({
-      severityNumber,
-      severityText: info.level,
-      body: info.message,
-      attributes,
-      context: span ? trace.setSpan(context.active(), span) : undefined,
-    });
-
-    callback();
-  }
-}
-
-// Custom format to inject trace context into logs (for console output)
-const injectTraceContext = winston.format((info) => {
-  const span = trace.getSpan(context.active());
-  if (span) {
-    const spanContext = span.spanContext();
-    // Add trace context to log metadata
-    info.traceId = spanContext.traceId;
-    info.spanId = spanContext.spanId;
-    info.traceFlags = spanContext.traceFlags;
-  }
-  return info;
-});
-
 // Create Winston logger
 const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || 'info',
   format: winston.format.combine(
     winston.format.timestamp(),
-    injectTraceContext(), // Add trace context
     winston.format.errors({ stack: true }),
     winston.format.json()
   ),
@@ -96,14 +32,8 @@ const logger = winston.createLogger({
       format: winston.format.combine(
         winston.format.colorize(),
         winston.format.simple(),
-        winston.format.printf(({ timestamp, level, message, traceId, spanId, ...metadata }) => {
+        winston.format.printf(({ timestamp, level, message, ...metadata }) => {
           let msg = `${timestamp} [${level}]: ${message}`;
-          if (traceId) {
-            msg += ` [traceId=${traceId}]`;
-          }
-          if (spanId) {
-            msg += ` [spanId=${spanId}]`;
-          }
           // Remove service from metadata for cleaner output
           if (metadata.service) {
             delete metadata.service;
@@ -115,10 +45,7 @@ const logger = winston.createLogger({
         })
       )
     }),
-    // Custom OpenTelemetry transport
-    new OpenTelemetryTransport({
-      level: process.env.LOG_LEVEL || 'info',
-    }),
+    new OpenTelemetryTransportV3({loggerProvider}),
     // File transport for production (optional)
     new winston.transports.File({ 
       filename: 'app.log',

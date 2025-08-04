@@ -70,6 +70,9 @@ const sdk = new NodeSDK({
       '@opentelemetry/instrumentation-fs': {
         enabled: false, // fs instrumentation can be noisy
       },
+      '@opentelemetry/instrumentation-winston': {
+        enabled: false // disabled winston instrumentation to avoid double logging
+      },
     }),
   ],
 });
