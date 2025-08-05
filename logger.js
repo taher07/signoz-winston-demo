@@ -1,21 +1,7 @@
 const winston = require('winston');
-const { logs, SeverityNumber } = require('@opentelemetry/api-logs');
 const { OpenTelemetryTransportV3 } = require('@opentelemetry/winston-transport');
-const { loggerProvider } = require('./tracing');
 
-// Map Winston levels to OpenTelemetry severity numbers
-const severityMapping = {
-  error: SeverityNumber.ERROR,
-  warn: SeverityNumber.WARN,
-  info: SeverityNumber.INFO,
-  http: SeverityNumber.INFO,
-  verbose: SeverityNumber.DEBUG,
-  debug: SeverityNumber.DEBUG,
-  silly: SeverityNumber.TRACE,
-};
-
-// Get OpenTelemetry logger
-const otelLogger = logs.getLogger('winston-logger', '1.0.0');
+require('dotenv').config();
 
 // Create Winston logger
 const logger = winston.createLogger({
@@ -45,7 +31,7 @@ const logger = winston.createLogger({
         })
       )
     }),
-    new OpenTelemetryTransportV3({loggerProvider}),
+    new OpenTelemetryTransportV3(),
     // File transport for production (optional)
     new winston.transports.File({ 
       filename: 'app.log',

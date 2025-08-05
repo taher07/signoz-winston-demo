@@ -1,7 +1,4 @@
-require('dotenv').config();
-
 const { NodeSDK } = require('@opentelemetry/sdk-node');
-const { getNodeAutoInstrumentations } = require('@opentelemetry/auto-instrumentations-node');
 const { Resource } = require('@opentelemetry/resources');
 const { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } = require('@opentelemetry/semantic-conventions');
 const { OTLPTraceExporter } = require('@opentelemetry/exporter-trace-otlp-http');
@@ -9,7 +6,10 @@ const { OTLPMetricExporter } = require('@opentelemetry/exporter-metrics-otlp-htt
 const { OTLPLogExporter } = require('@opentelemetry/exporter-logs-otlp-http');
 const { PeriodicExportingMetricReader } = require('@opentelemetry/sdk-metrics');
 const { LoggerProvider, BatchLogRecordProcessor } = require('@opentelemetry/sdk-logs');
+const { getNodeAutoInstrumentations } = require('@opentelemetry/auto-instrumentations-node');
 const { logs } = require('@opentelemetry/api-logs');
+
+require('dotenv').config();
 
 const SIGNOZ_INGESTION_KEY = process.env.SIGNOZ_INGESTION_KEY;
 
@@ -66,15 +66,11 @@ const sdk = new NodeSDK({
   }),
   instrumentations: [
     getNodeAutoInstrumentations({
-      // Load all auto-instrumentations
-      '@opentelemetry/instrumentation-fs': {
-        enabled: false, // fs instrumentation can be noisy
-      },
       '@opentelemetry/instrumentation-winston': {
-        enabled: false // disabled winston instrumentation to avoid double logging
+        enabled: true
       },
-    }),
-  ],
+    })
+  ]
 });
 
 // Initialize the SDK and register with the OpenTelemetry API
@@ -90,6 +86,3 @@ process.on('SIGTERM', () => {
     .catch((error) => console.log('Error terminating OpenTelemetry', error))
     .finally(() => process.exit(0));
 });
-
-// Export the logger provider for use in the logger module
-module.exports = { loggerProvider };
