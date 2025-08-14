@@ -1,5 +1,4 @@
 const winston = require('winston');
-const { OpenTelemetryTransportV3 } = require('@opentelemetry/winston-transport');
 
 require('dotenv').config();
 
@@ -31,7 +30,6 @@ const logger = winston.createLogger({
         })
       )
     }),
-    new OpenTelemetryTransportV3(),
     // File transport for production (optional)
     new winston.transports.File({ 
       filename: 'app.log',

@@ -214,5 +214,5 @@ app.listen(PORT, () => {
   logger.info(`Server started on port ${PORT}`);
   console.log(`Server is running on http://localhost:${PORT}`);
   console.log(`Sending traces to SigNoz Cloud (${process.env.OTEL_SERVICE_NAME})`);
-  console.log('Check your SigNoz Cloud dashboard for traces and logs');
+  console.log(`Check ${process.env.SIGNOZ_DASHBOARD_URL || 'your SigNoz Cloud dashboard'} for traces and logs`);
 });
